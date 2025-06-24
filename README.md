@@ -14,16 +14,16 @@ It enables efficient data processing, flexible indicator queries, and customized
 
 ### Features | 项目功能
 
-* 🔍 Search and retrieve specific stock or financial indicators
+* Search and retrieve specific stock or financial indicators
   搜索和提取特定的股票或财务指标
 
-* 📅 Output companies and dates that meet user-defined criteria
+* Output companies and dates that meet user-defined criteria
   输出满足用户设定条件的公司及其财报时间
 
-* 📦 Efficient batch processing of large-scale financial data
+* Efficient batch processing of large-scale financial data
   高效地批量处理大规模财务数据
 
-* ⚙️ User-defined indicator customization
+* User-defined indicator customization
   支持用户自定义指标与计算逻辑
 
 ---
