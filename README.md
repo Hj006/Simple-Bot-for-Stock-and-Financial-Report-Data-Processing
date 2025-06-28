@@ -41,3 +41,20 @@ It enables efficient data processing, flexible indicator queries, and customized
 
 4. **Support user-defined custom indicators (e.g., combining multiple metrics)**
    用户可定义新的指标（如多个财务比率组合），并将其用于查询或筛选
+---
+
+## 暂时的结构
+
+project_root/
+│
+├── main.py
+├── config.py                     # 配置：路径、指标定义
+├── utils/
+│   ├── excel_link_breaker.py     # 外链处理
+│   ├── metric_inserter.py        # add_new_metrics 相关函数
+│   └── formulas.py               # 所有指标计算逻辑
+├── processor/
+│   ├── process_excel.py          # 处理 Excel 核心逻辑
+│   └── process_csv.py            # 处理 CSV 的逻辑（可选）
+└── data/
+    └── 原始数据模板_财务分析_2025Q1.xlsx
