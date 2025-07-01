@@ -13,7 +13,7 @@ def contains_non_ascii(s):
 def process_raw_data():
 
     st.subheader("📁 原始数据清洗与结构化处理")
-    raw_path = st.text_input("📂 请输入包含原始 Excel 的文件夹路径（例如：D:/原始财报）", value="E:\code\Simple-Bot-for-Stock-and-Financial-Report-Data-Processing\test")
+    raw_path = st.text_input("📂 请输入包含原始 Excel 的文件夹路径（例如：D:/原始财报）", value=r"E:\code\Simple-Bot-for-Stock-and-Financial-Report-Data-Processing\test")
     st.caption("💡 路径建议使用英文且无特殊字符，例如：D:/data/2025")
     folder_path = os.path.normpath(raw_path.strip()) if raw_path else ""
 
@@ -117,12 +117,13 @@ st.title("📊 财报数据处理与查询 BOT")
 
 st.sidebar.header("📌 功能菜单")
 menu_option = st.sidebar.radio("请选择操作", [
-    "🔍 查询公司指标",
+    "🔍 查询数值",
+    "🔍 查询满足条件的公司",
     "📁 处理原始数据",
     "🧠 自定义指标（占位）"
 ])
 
-if menu_option == "🔍 查询公司指标":
+if menu_option == "🔍 查询数值":
     st.subheader("🔍 查询公司财务指标")
 
     # ✅ 公共输入项（上方统一输入）
@@ -152,14 +153,144 @@ if menu_option == "🔍 查询公司指标":
 
             run_query(company_map, indicator, date_str)
 
+elif menu_option == "🔍 查询满足条件的公司":
+    st.subheader("🔍 查询满足条件的公司以及具体时间")
 
-# 📁 功能 2：读取并处理原始数据
+    indicator = st.text_input("📌 请输入要查询的指标（如：总资产周转率）", value="总资产周转率")
+    threshold = st.text_input("📈 请输入阈值（百分比请直接输入数字，如98表示98%）", value="73")
+    sheet_index = st.number_input("📄 请输入Sheet索引（从1开始）", min_value=1, value=1, step=1)
+
+    mode = st.radio("📂 请选择数据来源方式：", ["从本地文件夹读取", "上传 Excel 文件"])
+
+    # 存储文件对象（file path 或 uploaded file）
+    file_objs = []
+
+    if mode == "从本地文件夹读取":
+        folder_path = st.text_input("📂 请输入本地文件夹路径（如 D:/data）")
+        if folder_path and os.path.exists(folder_path):
+            file_objs = [
+                os.path.join(folder_path, f)
+                for f in os.listdir(folder_path)
+                if f.lower().endswith('.xlsx')
+            ]
+        elif folder_path:
+            st.error("❌ 文件夹路径不存在，请确认输入。")
+
+    elif mode == "上传 Excel 文件":
+        uploaded_files = st.file_uploader("📤 上传多个 Excel 文件", type="xlsx", accept_multiple_files=True)
+        if uploaded_files:
+            file_objs = uploaded_files
+
+    if file_objs and st.button("🔍 开始筛选"):
+        threshold_value = None
+        try:
+            threshold_value = float(threshold)
+        except ValueError:
+            st.error("❌ 阈值必须为数字，请重新输入。")
+        
+        if threshold_value is not None:
+            for f in file_objs:
+                file_label = f.name if hasattr(f, "name") else os.path.basename(f)
+
+                try:
+                    # 读取 Excel
+                    xl = pd.ExcelFile(f)
+                    sheet_names = xl.sheet_names
+
+                    if sheet_index > len(sheet_names):
+                        st.warning(f"⚠️ 文件 {file_label} 不存在第 {sheet_index} 个 sheet，总共有 {len(sheet_names)} 个 sheet。")
+                        continue
+
+                    df = xl.parse(sheet_name=sheet_names[sheet_index - 1], header=None)
+                    # st.write(f"sheet ：{sheet_names[sheet_index - 1]}")
+                    # 识别第1列（指标名称列）和第6行（时间行）
+                    time_row = df.iloc[5, 1:]  # 第6行，从第二列开始（跳过第一列的指标名称）
+                    # st.write(f"时间 ：{time_row}")
+                    # 清洗百分号格式，并转成 float
+                    # 对整个 DataFrame 清除百分号，确保所有列都被统一处理
+                    #df_cleaned = df.astype(str).replace('%', '', regex=True)
+
+                    # 转换数值部分（保留指标列第0列，用于后续匹配）
+                    data = df.iloc[:, 1:].apply(pd.to_numeric, errors='coerce').fillna(0)
+
+
+                    # 查找指标行号
+                    matched_rows = df.iloc[:, 0].str.strip().str.contains(indicator, na=False)
+                    # st.write(f"行号码 ：{matched_rows}")
+                    if matched_rows.any():
+
+                        idx = matched_rows[matched_rows].index[0]
+                        # st.write(f"行号 ：{idx}")
+                        row_data_raw = df.iloc[idx, 1:]  # 🟢 拿 df 原始数据，包含 %, 还未转 numeric
+
+                        row_data_numeric = []
+                        row_data_display = []
+
+                        for val in row_data_raw:
+                            try:
+                                val_str = str(val).strip()
+
+                                # 默认值
+                                display_val = val_str
+                                num = None
+
+                                if '%' in val_str:
+                                    num = float(val_str.replace('%', '').strip())
+                                    display_val = f"{num:.2f}%"
+                                else:
+                                    num = float(val_str)
+                                    if 0 < num < 1:
+                                        # Excel 百分比格式
+                                        num *= 100
+                                        display_val = f"{num:.2f}%"
+                                    else:
+                                        display_val = f"{num:.2f}"
+
+                                row_data_numeric.append(num)
+                                row_data_display.append(display_val)
+
+                            except:
+                                row_data_numeric.append(None)
+                                row_data_display.append("N/A")
+
+                        # st.write(f"行号码 ：{row_data_numeric}")
+                        # 转成 Series 方便比较
+                        row_series = pd.Series(row_data_numeric, index=row_data_raw.index)
+                        passed = row_series > threshold_value
+
+                        # st.write(f"数据 ：{row_data}")
+                        # 比较大于阈值的列
+
+                        if passed.any():
+                            st.success(f"✅ 文件 {file_label} 满足条件的时间如下：")
+                            for i, passed_flag in enumerate(passed):
+                                if passed_flag:
+                                    display_val = row_data_display[i]
+                                    time_val = time_row.iloc[i]
+                                    st.write(f"📌 时间：{time_val}，值：{display_val}")
+                        else:
+                            st.info(f"📄 {file_label} 中未发现大于阈值的值")
+
+
+                    else:
+                        st.warning(f"⚠️ 文件 {file_label} 中未找到指标 '{indicator}'")
+
+                except Exception as e:
+                    st.error(f"❌ 处理文件 {file_label} 时出错：{str(e)}")
+
+
+
+
+# 📁 功能 3：读取并处理原始数据
 elif menu_option == "📁 处理原始数据":
     from processor.process_excel import process_excel_file
 
     process_raw_data()
 
-# 🧠 功能 3：自定义指标（占位）
+# 🧠 功能 4：自定义指标（占位）
 elif menu_option == "🧠 自定义指标（占位）":
     st.subheader("🧠 自定义指标（敬请期待）")
     st.info("如 ROE = 净利润 / 所有者权益，将在后续版本中开放。")
+
+
+#streamlit run streamlit_app.py
