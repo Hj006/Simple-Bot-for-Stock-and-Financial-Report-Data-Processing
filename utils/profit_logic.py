@@ -1,7 +1,7 @@
 # utils/profit_logic.py
 import pandas as pd
 import numpy as np
-
+import streamlit as st
 def compute_profit_metrics(df_profit: pd.DataFrame, df_main: pd.DataFrame) -> dict:
     results = {}
     n_cols = df_profit.shape[1]

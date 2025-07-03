@@ -194,6 +194,8 @@ elif menu_option == "🔍 查询满足条件的公司":
 
                 try:
                     # 读取 Excel
+                    st.markdown(f"### 📄 正在处理文件：`{file_label}`")
+                    
                     xl = pd.ExcelFile(f)
                     sheet_names = xl.sheet_names
 

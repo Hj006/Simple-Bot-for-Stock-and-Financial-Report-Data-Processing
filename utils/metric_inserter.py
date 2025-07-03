@@ -69,23 +69,24 @@ def add_new_metrics(ws, new_metrics, percentage_metrics=None):
     use_gray = False
 
     # 获取已有指标，避免重复插入
-    existing_metrics = {str(ws.cell(row=r, column=1).value).strip() for r in range(1, current_row)}
-
+    # existing_metrics = {str(ws.cell(row=r, column=1).value).strip() for r in range(1, current_row)}
+    '''
+    
+   existing_metrics = {
+    str(ws.cell(row=r, column=1).value).strip()
+    for r in range(1, current_row)
+    if ws.cell(row=r, column=1).value is not None
+}
+ 
+    
+    '''
     for metric in new_metrics:
+        '''
         if metric in existing_metrics:
             continue  # 防止重复插入
-
+        '''
         template_row = row_gray if use_gray else row_white
         use_gray = not use_gray
-
-        if metric in insert_two_blank_before:
-            for _ in range(2):
-                for col in range(1, max_col + 1):
-                    ref_cell = row_white[col - 1]
-                    cell = ws.cell(row=current_row, column=col)
-                    cell.value = '' if col == 1 else None
-                    copy_style(cell, ref_cell)
-                current_row += 1
 
         # 插入标题类（同比/环比）
         if metric in group_titles:
@@ -96,6 +97,17 @@ def add_new_metrics(ws, new_metrics, percentage_metrics=None):
                 copy_style(cell, ref_cell)
             current_row += 1
             continue
+
+        if metric in insert_two_blank_before:
+            for _ in range(2):
+                for col in range(1, max_col + 1):
+                    ref_cell = row_white[col - 1]
+                    cell = ws.cell(row=current_row, column=col)
+                    cell.value = '' if col == 1 else None
+                    copy_style(cell, ref_cell)
+                current_row += 1
+
+
 
         # 插入正常指标
         for col in range(1, max_col + 1):
