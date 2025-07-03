@@ -117,6 +117,36 @@ def compute_all_metrics(df_main, df_profit, df_cashflow) -> dict:
     """
     # 主体计算函数映射
     calculated = {
+        '流动比率（扣除预收账款）': df_main.iloc[37] / (df_main.iloc[105] - df_main.iloc[79]),
+        '现金比率（扣除预收账款）': df_main.iloc[9]  / (df_main.iloc[105] - df_main.iloc[79]),
+        '资产负债率':             df_main.iloc[123] / df_main.iloc[71],
+        'Net Gearing':            (
+                                    df_main.iloc[73] + df_main.iloc[89] + df_main.iloc[107] +
+                                    df_main.iloc[77] + df_main.iloc[78] + df_main.iloc[93] +
+                                    df_main.iloc[92] + df_main.iloc[108] - df_main.iloc[9]
+                                ) / df_main.iloc[140],
+        '应收/总资产':             (
+                                    df_main.iloc[13] + df_main.iloc[14] + df_main.iloc[15] + df_main.iloc[17]
+                                ) / df_main.iloc[71],
+        '货币资金/有息负债':       df_main.iloc[9] / (
+                                    df_main.iloc[73] + df_main.iloc[92] + df_main.iloc[107] + df_main.iloc[108]
+                                ),
+
+        '应收款': yoy_series((df_main.iloc[13] + df_main.iloc[14] + df_main.iloc[15] + df_main.iloc[17]).reset_index(drop=True)),
+        '应收账款': yoy_series(df_main.iloc[14].reset_index(drop=True)),
+        '预收账款': yoy_series(df_main.iloc[79].reset_index(drop=True)),
+        '现金':     yoy_series(df_main.iloc[9].reset_index(drop=True)),
+        '存货':     yoy_series(df_main.iloc[22].reset_index(drop=True)),
+        '应付票据和账款（短期）': yoy_series((df_main.iloc[77] + df_main.iloc[78]).reset_index(drop=True)),
+
+        '应收账款（环比）': qoq_series(df_main.iloc[14].reset_index(drop=True)),
+        '其他应收款':       qoq_series(df_main.iloc[17].reset_index(drop=True)),
+        '固定资产':         qoq_series(df_main.iloc[51].reset_index(drop=True)),
+        '资产总计':         qoq_series(df_main.iloc[71].reset_index(drop=True)),
+        '应付票据和账款（短期）（环比）': qoq_series((df_main.iloc[77] + df_main.iloc[78]).reset_index(drop=True)),
+        '存货（环比）':     qoq_series(df_main.iloc[22].reset_index(drop=True)),
+        '现金(环比）':      qoq_series(df_main.iloc[9].reset_index(drop=True)),
+
         'ROE(pro forma)': calc_roe(df_main, df_profit),
         '净利率': calc_net_margin(df_profit),
         '总资产周转率': calc_asset_turnover(df_main, df_profit),
@@ -124,8 +154,8 @@ def compute_all_metrics(df_main, df_profit, df_cashflow) -> dict:
         '存货周转率': calc_inventory_turnover(df_main, df_profit),
         '应收账款周转率': calc_ar_turnover(df_main, df_profit),
         '应收变化/收入变化': calc_receivable_change_ratio_multicol(df_main, df_profit),
-        # 其他指标（例如同比/环比）建议在 profit_metrics 中处理
     }
+
 
     # 合并利润表指标
     calculated.update(compute_profit_metrics(df_profit, df_main))

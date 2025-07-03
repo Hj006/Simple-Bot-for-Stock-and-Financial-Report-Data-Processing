@@ -34,7 +34,15 @@ def process_excel_file(file_path: str, output_path: str):
 
     # 计算并写入
     all_metrics = compute_all_metrics(df, df_profit, df_cashflow)
-
+    '''
+    with open('all_metrics.txt', 'w', encoding='utf-8') as f:
+        for metric, values in all_metrics.items():
+            f.write(f'{metric}:\n')
+            if isinstance(values, (list, pd.Series, pd.Index)):
+                f.write(', '.join([str(v) for v in values]) + '\n\n')
+            else:
+                f.write(str(values) + '\n\n') 
+    '''
     for sheet, mapping in zip(
         [ws_formula, ws_profit, ws_cashflow],
         [row_map, profit_row_map, cashflow_row_map]
