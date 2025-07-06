@@ -13,50 +13,67 @@ def contains_non_ascii(s):
 def process_raw_data():
 
     st.subheader("📁 原始数据清洗与结构化处理")
-    st.info("请先输入包含 Excel 财报的文件夹路径，然后点击下方按钮开始处理。")
-    raw_path = st.text_input("📂 请输入包含原始 Excel 的文件夹路径（例如：D:/原始财报）", value=r"E:\code\Simple-Bot-for-Stock-and-Financial-Report-Data-Processing\test")
-    st.caption("💡 路径建议使用英文且无特殊字符，例如：D:/data/2025")
-    folder_path = os.path.normpath(raw_path.strip()) if raw_path else ""
+    st.info("请依次输入【原始数据路径】和【处理结果保存路径】，然后点击下方按钮开始处理。")
 
-    if st.button("🚀 开始处理数据"):
+    # ✅ 输入原始路径
+    raw_path = st.text_input(
+        "📂 原始 Excel 文件夹路径（例如：D:/原始财报）",
+        value=r"E:\code\Simple-Bot-for-Stock-and-Financial-Report-Data-Processing\test"
+    )
 
-        if not folder_path:
-            st.error("❌ 请输入文件夹路径")
+    # ✅ 输入输出路径
+    output_base_path = st.text_input(
+        "💾 处理结果保存到哪个文件夹（例如：D:/输出结果）",
+        value=r"E:\code\Simple-Bot-for-Stock-and-Financial-Report-Data-Processing\output"
+    )
+
+    st.caption("⚠️ 路径建议使用英文且无特殊字符；若文件夹不存在将自动创建。")
+
+    # ✅ 按钮触发处理
+    if st.button("🚀 开始批量处理并导出"):
+
+        input_folder = os.path.normpath(raw_path.strip()) if raw_path else ""
+        output_folder = os.path.normpath(output_base_path.strip()) if output_base_path else ""
+
+        if not input_folder or not output_folder:
+            st.error("❌ 请同时填写输入路径和输出路径")
             return
 
-        if contains_non_ascii(folder_path):
-            st.warning("⚠️ 当前路径包含中文或特殊字符，建议使用英文路径")
+        if contains_non_ascii(input_folder) or contains_non_ascii(output_folder):
+            st.warning("⚠️ 路径中包含中文或特殊字符，建议使用英文路径")
             return
 
-        if not os.path.exists(folder_path):
-            st.error("❌ 路径不存在，请检查后重试")
+        if not os.path.exists(input_folder):
+            st.error("❌ 输入路径不存在")
             return
 
-        files = [f for f in os.listdir(folder_path) if f.lower().endswith('.xlsx')]
+        os.makedirs(output_folder, exist_ok=True)  # 自动创建输出目录（如不存在）
+
+        files = [f for f in os.listdir(input_folder) if f.lower().endswith('.xlsx')]
 
         if not files:
             st.warning("⚠️ 未找到任何 .xlsx 文件")
             return
 
-        st.success(f"✅ 找到 {len(files)} 个 Excel 文件，准备开始处理...")
-
+        st.success(f"✅ 找到 {len(files)} 个 Excel 文件，开始处理...")
 
         pythoncom.CoInitialize()
-        excel = win32com.client.Dispatch("Excel.Application")
+        win32com.client.Dispatch("Excel.Application")  # 初始化 COM，不用实际打开
 
         for f in files:
-            full_path = os.path.join(folder_path, f)
-            output_path = os.path.join(folder_path, f.replace('.xlsx', '_v1.xlsx'))
+            full_input = os.path.join(input_folder, f)
+            full_output = os.path.join(output_folder, f.replace(".xlsx", "_v1.xlsx"))
 
             st.write(f"📄 正在处理：{f}")
             try:
-                process_excel_file(full_path, output_path)
-                st.success(f"✅ 已处理完成：{f}")
+                process_excel_file(full_input, full_output)
+                st.success(f"✅ 已导出至：{full_output}")
             except Exception as e:
                 st.error(f"❌ 处理失败：{f}，原因：{str(e)}")
 
         st.balloons()
-        st.info("🎉 全部处理完成！请在原文件夹中查看生成的 *_v1.xlsx 文件。")
+        st.success("🎉 所有文件处理完成！请前往指定输出文件夹查看结果。")
+
 
 def run_query(company_map, indicator, date_str):
     if not company_map:
