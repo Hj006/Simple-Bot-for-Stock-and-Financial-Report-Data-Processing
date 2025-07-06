@@ -13,34 +13,42 @@ def contains_non_ascii(s):
 def process_raw_data():
 
     st.subheader("📁 原始数据清洗与结构化处理")
+    st.info("请先输入包含 Excel 财报的文件夹路径，然后点击下方按钮开始处理。")
     raw_path = st.text_input("📂 请输入包含原始 Excel 的文件夹路径（例如：D:/原始财报）", value=r"E:\code\Simple-Bot-for-Stock-and-Financial-Report-Data-Processing\test")
     st.caption("💡 路径建议使用英文且无特殊字符，例如：D:/data/2025")
     folder_path = os.path.normpath(raw_path.strip()) if raw_path else ""
 
-    if folder_path:
+    if st.button("🚀 开始处理数据"):
+
+        if not folder_path:
+            st.error("❌ 请输入文件夹路径")
+            return
+
         if contains_non_ascii(folder_path):
-            st.warning("⚠️ 当前路径包含中文或特殊字符，可能导致读取失败，请使用英文路径。")
+            st.warning("⚠️ 当前路径包含中文或特殊字符，建议使用英文路径")
             return
 
         if not os.path.exists(folder_path):
-            st.error("❌ 输入的文件夹路径不存在，请确认路径是否正确。")
+            st.error("❌ 路径不存在，请检查后重试")
             return
 
         files = [f for f in os.listdir(folder_path) if f.lower().endswith('.xlsx')]
 
         if not files:
-            st.warning("⚠️ 该文件夹中未找到任何 .xlsx 文件。")
+            st.warning("⚠️ 未找到任何 .xlsx 文件")
             return
+
+        st.success(f"✅ 找到 {len(files)} 个 Excel 文件，准备开始处理...")
+
 
         pythoncom.CoInitialize()
         excel = win32com.client.Dispatch("Excel.Application")
-        st.success(f"✅ 找到 {len(files)} 个 Excel 文件，准备开始处理...")
 
         for f in files:
             full_path = os.path.join(folder_path, f)
             output_path = os.path.join(folder_path, f.replace('.xlsx', '_v1.xlsx'))
-            st.write(f"🔄 正在处理：{f}")
 
+            st.write(f"📄 正在处理：{f}")
             try:
                 process_excel_file(full_path, output_path)
                 st.success(f"✅ 已处理完成：{f}")

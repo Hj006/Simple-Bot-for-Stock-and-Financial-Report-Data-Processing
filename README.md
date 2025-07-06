@@ -1,3 +1,8 @@
+## Streamlit 使用部分
+pip install streamlit pandas openpyxl
+## 在项目根目录运行：
+streamlit run streamlit_app.py
+
 ## Project: Simple-Bot-for-Stock-and-Financial-Report-Data-Processing
 
 简易股票与财报数据处理机器人
