@@ -87,7 +87,7 @@ def compute_profit_metrics(df_profit: pd.DataFrame, df_main: pd.DataFrame) -> di
 
         try:
             curr = col(i, 58) - col(i, 44) + col(i, 45) - col(i, 31) - col(i, 32)
-            base = prev(i, 58) - prev(i, 44) + prev(i, 45) - prev(i, 31) - prev(i, 32)
+            base = prev4(i, 58) - prev4(i, 44) + prev4(i, 45) - prev4(i, 31) - prev4(i, 32)
             value = (curr / base - 1) if base else np.nan
         except IndexError:
             value = np.nan
