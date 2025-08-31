@@ -1,5 +1,6 @@
 # Simple-Bot-for-Stock-and-Financial-Report-Data-Processing\streamlit_app.py
 import os
+import re  # ← 新增：用于提取列名中的年份
 import streamlit as st
 import pandas as pd
 import win32com.client
@@ -185,6 +186,22 @@ elif menu_option == "🔍 查询满足条件的公司":
     threshold = st.text_input("📈 请输入阈值（百分比请直接输入数字，如98表示98%）", value="73")
     sheet_index = st.number_input("📄 请输入Sheet索引（从1开始）", min_value=1, value=1, step=1)
 
+    # ✅ 新增：比较类型 + 年份区间
+    compare_label = st.selectbox("请选择比较类型", ["大于", "大于等于", "小于", "小于等于", "等于"], index=0)
+    compare_ops = {
+        "大于":       (lambda x, y: x > y),
+        "大于等于":   (lambda x, y: x >= y),
+        "小于":       (lambda x, y: x < y),
+        "小于等于":   (lambda x, y: x <= y),
+        "等于":       (lambda x, y: abs(x - y) < 1e-6),  # 带容差，避免浮点误差
+    }
+    c1, c2 = st.columns(2)
+    start_year = c1.number_input("开始年份（含）", min_value=1990, max_value=2100, value=2020, step=1)
+    end_year   = c2.number_input("结束年份（含）", min_value=1990, max_value=2100, value=2025, step=1)
+    if start_year > end_year:
+        st.warning("开始年份大于结束年份，已自动交换。")
+        start_year, end_year = end_year, start_year
+
     mode = st.radio("📂 请选择数据来源方式：", ["从本地文件夹读取", "上传 Excel 文件"])
 
     # 存储文件对象（file path 或 uploaded file）
@@ -207,12 +224,18 @@ elif menu_option == "🔍 查询满足条件的公司":
             file_objs = uploaded_files
 
     if file_objs and st.button("🔍 开始筛选"):
+        # 阈值转换
         threshold_value = None
         try:
             threshold_value = float(threshold)
         except ValueError:
             st.error("❌ 阈值必须为数字，请重新输入。")
-        
+
+        # 小工具：提取列名中的 4 位年份
+        def _extract_year(val):
+            m = re.search(r"(19|20)\d{2}", str(val))
+            return int(m.group(0)) if m else None
+
         if threshold_value is not None:
             for f in file_objs:
                 file_label = f.name if hasattr(f, "name") else os.path.basename(f)
@@ -229,27 +252,21 @@ elif menu_option == "🔍 查询满足条件的公司":
                         continue
 
                     df = xl.parse(sheet_name=sheet_names[sheet_index - 1], header=None)
-                    # st.write(f"sheet ：{sheet_names[sheet_index - 1]}")
-                    # 识别第1列（指标名称列）和第6行（时间行）
-                    time_row = df.iloc[5, 1:]  # 第6行，从第二列开始（跳过第一列的指标名称）
-                    # st.write(f"时间 ：{time_row}")
-                    # 清洗百分号格式，并转成 float
-                    # 对整个 DataFrame 清除百分号，确保所有列都被统一处理
-                    #df_cleaned = df.astype(str).replace('%', '', regex=True)
+                    # 时间行（第6行，从第二列开始）
+                    time_row = df.iloc[5, 1:]
 
-                    # 转换数值部分（保留指标列第0列，用于后续匹配）
-                    data = df.iloc[:, 1:].apply(pd.to_numeric, errors='coerce').fillna(0)
+                    # —— 年份过滤掩码（只保留 [start_year, end_year] 的列）
+                    years = pd.Series([_extract_year(x) for x in time_row], index=time_row.index)
+                    mask_year = years.apply(lambda y: y is not None and (int(start_year) <= y <= int(end_year)))
 
-
-                    # 查找指标行号
-                    matched_rows = df.iloc[:, 0].str.strip().str.contains(indicator, na=False)
-                    # st.write(f"行号码 ：{matched_rows}")
+                    # 查找指标行（模糊匹配：包含关系）
+                    matched_rows = df.iloc[:, 0].astype(str).str.strip().str.contains(str(indicator), na=False)
                     if matched_rows.any():
 
                         idx = matched_rows[matched_rows].index[0]
-                        # st.write(f"行号 ：{idx}")
-                        row_data_raw = df.iloc[idx, 1:]  # 🟢 拿 df 原始数据，包含 %, 还未转 numeric
+                        row_data_raw = df.iloc[idx, 1:]  # 原始字符串（可能包含 %）
 
+                        # 将值解析为数字 & 文本显示（百分比→百分数字面；0<x<1 视作百分比）
                         row_data_numeric = []
                         row_data_display = []
 
@@ -267,7 +284,7 @@ elif menu_option == "🔍 查询满足条件的公司":
                                 else:
                                     num = float(val_str)
                                     if 0 < num < 1:
-                                        # Excel 百分比格式
+                                        # Excel 百分比小数 → 百分数
                                         num *= 100
                                         display_val = f"{num:.2f}%"
                                     else:
@@ -280,31 +297,32 @@ elif menu_option == "🔍 查询满足条件的公司":
                                 row_data_numeric.append(None)
                                 row_data_display.append("N/A")
 
-                        # st.write(f"行号码 ：{row_data_numeric}")
-                        # 转成 Series 方便比较
-                        row_series = pd.Series(row_data_numeric, index=row_data_raw.index)
-                        passed = row_series > threshold_value
+                        # —— 先按年份掩码过滤
+                        row_series_all = pd.Series(row_data_numeric, index=row_data_raw.index)
+                        row_series = row_series_all[mask_year]
+                        time_row_year = time_row[mask_year]
+                        row_display_year = [d for d, keep in zip(row_data_display, mask_year.tolist()) if keep]
 
-                        # st.write(f"数据 ：{row_data}")
-                        # 比较大于阈值的列
+                        # —— 动态比较（> ≥ < ≤ =）
+                        cmp = compare_ops[compare_label]
+                        passed = row_series.apply(lambda v: cmp(v, threshold_value) if v is not None and pd.notna(v) else False)
 
                         if passed.any():
-                            st.success(f"✅ 文件 {file_label} 满足条件的时间如下：")
-                            for i, passed_flag in enumerate(passed):
-                                if passed_flag:
-                                    display_val = row_data_display[i]
-                                    time_val = time_row.iloc[i]
-                                    st.write(f"📌 时间：{time_val}，值：{display_val}")
+                            st.success(f"✅ 文件 {file_label}（年份 {int(start_year)}–{int(end_year)}）满足条件的时间如下：")
+                            # 将命中的列逐个输出
+                            di = 0
+                            for col, is_ok in passed.items():
+                                if is_ok:
+                                    st.write(f"📌 时间：{time_row_year.loc[col]}，值：{row_display_year[di]}")
+                                di += 1
                         else:
-                            st.info(f"📄 {file_label} 中未发现大于阈值的值")
-
+                            st.info(f"📄 {file_label} 在 {int(start_year)}–{int(end_year)} 年内未发现满足“{compare_label} {threshold_value}”的值")
 
                     else:
                         st.warning(f"⚠️ 文件 {file_label} 中未找到指标 '{indicator}'")
 
                 except Exception as e:
                     st.error(f"❌ 处理文件 {file_label} 时出错：{str(e)}")
-
 
 
 
