@@ -192,3 +192,4 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignoreStockSearch_Windows_v1.zip
+StockSearch_Windows_v1.zip
