@@ -1,4 +1,9 @@
-streamlit
-pandas
-openpyxl
-numpy
+streamlit==1.46.1
+pandas==2.2.3
+numpy==2.0.1
+openpyxl==3.1.5
+pillow==11.2.1
+requests==2.32.3
+beautifulsoup4==4.13.4
+
+#进入虚拟环境和根目录，输入powershell -NoProfile -ExecutionPolicy Bypass -File .\build_win.ps1，自动下载
